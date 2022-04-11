@@ -1,2 +1,2 @@
 # ekonomia-reputation
-Creating on-chain reputation scoring
+This repository contains the first revision of on-chain reputation scoring. 
