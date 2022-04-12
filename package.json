@@ -1,10 +1,10 @@
 {
-  "name": "lending-subgraph-standard",
-  "description": "Subgraph Standard for Lending Protocols",
-  "repository": "https://github.com/davekaj/lending-subgraph-standard",
+  "name": "ekonomia-reputation",
+  "description": "On-Chain DeFi Reputation Scoring",
+  "repository": "https://github.com/ekonomia-tech/ekonomia-reputation",
   "license": "MIT",
   "scripts": {
-    "build-ethereum-all": "yarn build-ethereum-aave && ",
+    "build-ethereum-all": "",
     "build-ethereum-compound": "",
     "build-ethereum-aave": "mustache ./subgraphs/aave-v2/config/ethereum.json ./subgraphs/aave-v2/aave-v2.template.yaml > ./subgraphs/aave-v2/aave-v2.ethereum.yaml && graph codegen ./subgraphs/aave-v2/aave-v2.ethereum.yaml --output-dir ./subgraphs/aave-v2/src/generated",
     "build-polygon-all": "",
