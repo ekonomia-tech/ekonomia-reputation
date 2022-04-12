@@ -6,11 +6,11 @@ schema:
 dataSources:
   - kind: ethereum/contract
     name: LendingPoolAddressesProviderRegistry
-    network: "{{network}}"
+    network: "mainnet"
     source:
-      address: "{{LendingPoolAddressesProviderRegistryAddress}}"
+      address: "0x52D306e36E3B6B02c153d0266ff0f85d18BCD413"
       abi: LendingPoolAddressesProviderRegistry
-      startBlock: {{LendingPoolAddressesProviderRegistryStartBlock}}
+      startBlock: 11360900
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.5
@@ -97,5 +97,5 @@ templates:
           handler: handleRepay
         - event: LiquidationCall(indexed address,indexed address,indexed address,uint256,uint256,address,bool)
           handler: handleLiquidate
-        - event: ReserveDataUpdated(indexed address,uint256,uint256,uint256,uint256,uint256)
-          handler: handleReserveDataUpdated
+        # - event: ReserveDataUpdated(indexed address,uint256,uint256,uint256,uint256,uint256)
+        #   handler: handleReserveDataUpdated

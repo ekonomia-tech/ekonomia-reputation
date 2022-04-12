@@ -1,0 +1,251 @@
+# SP: KEEP. Even though these are never used, but just assigned once for a respective protocol. I think this is still important because it will possibly lead to a factor that could change the resultant reputation score for an account
+enum LendingType {
+  "Collateralized Debt Position (CDP) protocols have singular isolated positions created by users. We aggregate them to give a single view of a market"
+  CDP
+  "Pooled protocols pool all users assets into a single market"
+  POOLED
+}
+
+# SP: KEEP same as above
+enum RiskType {
+  "Global risk means each users position in a market is combined for one score to determine if they can be liquidated"
+  GLOBAL
+  "Isolated risk means each users position in a market or CDP is isolated for risk of liquidation"
+  ISOLATED
+}
+
+#SP: In general I think that we can simplify this down to ETHEREUM for now, but keep it for use later as we onboard different networks
+enum Network {
+  "The ethereum network"
+  ETHEREUM
+  "The polygon network"
+  POLYGON
+  "The avalanche network"
+  AVALANCHE
+}
+
+"""
+Protocol represents all aggregated information of a single protocol on a single network.
+"""
+type Protocol @entity {
+  "The Name of the Protocol"
+  id: ID!
+  "The Network the protocol exists on - Ethereum, Polygon, etc."
+  network: Network! # SP: KEEP - see enum notes
+  "Type of lending protocol"
+  type: LendingType! # SP: KEEP - see enum notes
+  "Protocol Main Address"
+  address: Bytes! 
+  "Address of price oracle the comptroller uses"
+  priceOracle: Bytes # SP: DISCARD. This is only ever assigned in compound. Our subgraph will be querying Chainlink info on its own (maybe), so having the respective dedicated priceOracles for an individual protocol may not be in scope here
+  "Factor used to determine repayAmount for liquidating"
+  closeFactor: BigInt # SP: DISCARD. Only exists in COMPOUND
+  "The percent bonus liquidators get for liquidating"
+  liquidationIncentive: BigInt # SP: DISCARD. Only exists in COMPOUND
+  "Max assets a single user can enter"
+  maxAssets: BigInt # SP: DISCARD. A little unsure... but only exists in COMPOUND really atm.
+  "All Markets within this Protocol"
+  markets: [Market!]! @derivedFrom(field: "protocol")
+  "All Accounts that have used this Protocol"
+  accounts: [AccountInProtocol!]! @derivedFrom(field: "protocol")
+  "All events that happened in the protocol"
+  events: [Event!]! @derivedFrom(field: "protocol") #SP: Consider adding in a "CLOSED" event for an account closing off their debt in full. I would think that, when not gamified, really upgardes some reputation.
+}
+
+"""
+An asset used in a lending protocol. All assets should follow ERC-20 Standard
+"""
+type Asset @entity {
+  "Contract address"
+  id: ID!
+  "Token symbol"
+  symbol: String!
+  "Name of asset"
+  name: String!
+  "Decimals of the asset"
+  decimals: Int!
+}
+
+"""
+A single Market within a Protocol. A Market can be a single pool where all assets are pooled together. It can also be a combination of Collateralized Debt Positions (CDPs). The CDPs are aggregated together to represent a uniform Market. A Market can only contain 1 depositAsset and 1 borrowAsset.
+"""
+type Market @entity {
+  "Contract address"
+  id: ID! # SP: This is too ambiguous right now, is it the actual market (the one we get most market-related events from, or is it the contract that contains the asset reserves)
+  "Name of the Market"
+  name: String!
+  "The Protocol the Market is a part of"
+  protocol: Protocol!
+  "Underlying Asset"
+  asset: Asset!
+  "Borrowed asset if there is one"
+  collateralBackedAsset: Asset # SP: KEEP - used in Aave (v2 and v3), also used in Liquity. We need to get on the same page with this and relevant altAsset fields in other entities.
+  "CToken symbol"
+  symbol: String!
+  "Current deposited amount in depositAsset"
+  deposited: BigDecimal!
+  "Current borrowed amount in borrowAsset"
+  borrowed: BigDecimal!
+  "Address of the interest rate model"
+  interestRateModelAddress: Bytes! # SP: DISCARD - I don't think this is relevant for storing in our database. We would possibly pull details from the interestRateModelAddress and use it to calculate aggregations I'm guessing.
+  "Exchange rate of tokens / cTokens"
+  exchangeRate: BigDecimal! # SP: KEEP - used within COMP once to determine eventEntry.amount, but it should be raised as to whether this will be used in calculating reputation further along. Individual protocols should take into account their assets (borrow vs loaned) and how price fluctuations changes things. So I don't think we need to keep track of it, but that opens up a vulnerability I suppose. Someone could come along and mess with an exchangeRate that messes with positions in one protocol, that then mess up our reputation scores for all of those people, and further chaos could ensue.
+  "Collateral factor determining how much one can borrow"
+  collateralFactor: BigDecimal! # SP: DISCUSS: This is not really used except with COMP subgraph atm. We would be measuring the health of the positions people have in their current Loans, but those are measured, at least with v1, through their health statuses implied through emitted EVENTS. So I vote discard for now?
+  "Stable interest debt token"
+  stableInterestDebtToken: Bytes # SP: DISCARD: only shown in Aave. I think that we will be able to see people's accumulated debt (from interest) via other events.
+  "Variable interest debt token"
+  variableInterestDebtToken: Bytes # SP: DISCARD: only shown in Aave. I think that we will be able to see people's accumulated debt (from interest) via other events.
+  "The next liquidity rate"
+  liquidityRate: BigInt # SP: DISCARD. Not used elsewhere it seems other than Aave where it is assigned once. Doesn't seem relevant for reputation.
+  "The next stable borrow rate"
+  stableBorrowRate: BigInt # SP: DISCARD. Not used elsewhere it seems other than Aave where it is assigned once. Doesn't seem relevant for reputation.
+  "The next variable borrow rate"
+  variableBorrowRate: BigInt # SP: DISCARD "
+  "The next liquidity Index"
+  liquidityIndex: BigInt # SP: DISCARD "
+  "The next variable Borrow Index"
+  variableBorrowIndex: BigInt # SP: DISCARD "
+}
+
+"""
+An account that has interacted with at least 1 lending protocol tracked in the Subgraph
+"""
+# SP: Accounts within our protocol will have one reputation score. 
+type Account @entity {
+  "Account external address"
+  id: ID!
+  "True if user has ever borrowed"
+  hasBorrowed: Boolean! # SP: KEEP: hasBorrowed is probably a useful flag.
+  "Number of times the account has gotten liquidated"
+  liquidatedCount: Int! # SP: KEEP: probably useful
+  "Number of times the account liquidated others"
+  liquidatingCount: Int! # SP: KEEP: probably useful
+}
+
+"""
+History of an Account within a single Protocol
+"""
+# SP: If this can be close to standardized (as in an account's entity details are the same for each lending protocol out there), then this is pretty useful. We can do our calculations off of details from this entity, and we can also serve up the components we used to calculate our reputation for front-ends and whomever. One big reason I see to keep it around.
+type AccountInProtocol @entity {
+  "Account ID concatenated with Protocol ID"
+  id: ID!
+  "Protocol the Account is active in"
+  protocol: Protocol!
+  "Account which has participated in the Protocol"
+  account: Account!
+
+  "Accumulated deposited amount in USD. Conversion into USD done at event time"
+  lifetimeDepositedUSD: BigInt
+  "Accumulated withdrawn amount in USD. Conversion into USD done at event time"
+  lifetimeWithdrawnUSD: BigInt
+  "Accumulated borrowed amount in USD. Conversion into USD done at event time"
+  lifetimeBorrowedUSD: BigDecimal
+  "Accumulated repaid amount in USD. Conversion into USD done at event time"
+  lifetimeRepaidUSD: BigDecimal # SP: I was wondering if we should have a CLOSE flag, but I think having an aggregation based off of (Repaid / Borrowed) as a good metric, this way no one can game the system of having a CLOSE flag and just opening and closing small positions to boost their reputation.
+  "Accumulated liquidated amount in USD. Conversion into USD done at event time"
+  lifetimeLiquidatedUSD: BigDecimal
+
+  #The below... in the sense of reputation, I am not sure is relevant. Counts vs aggregated calculations with real values, opens us up for being taken advantage of. We already have lifetime values above so why do we need counts too?
+  "The number of time Deposits have occurred in all Protocols by this Account"
+  depositCount: Int! #SP: DISCARD
+  "The number of time Withdraws have occurred in all Protocols by this Account"
+  withdrawCount: Int! #SP: DISCARD
+  "The number of time Borrows have occurred in all Protocols by this Account"
+  borrowCount: Int! #SP: DISCARD
+  "The number of time Repays have occurred in all Protocols by this Account"
+  repayCount: Int! #SP: DISCARD
+  "The number of time Liquidations have occurred in all Protocols by this Account"
+  liquidatedCount: Int! #SP: DISCARD
+}
+
+"""
+Actions and history of an Account within a single Market
+"""
+type AccountInMarket @entity {
+  "Account ID concatenated with Market ID"
+  id: ID!
+  "Market the account is involved with"
+  market: Market!
+  "Account involved in this market"
+  account: Account!
+
+  "Current deposit amount in depositAsset"
+  deposited: BigDecimal!
+  "Current borrow amount in borrowAsset"
+  borrowed: BigDecimal!
+
+  "Accumulated deposited amount in depositAsset"
+  lifetimeDeposited: BigDecimal!
+  "Accumulated deposited amount in USD. Conversion into USD done at event time"
+  lifetimeDepositedUSD: BigDecimal
+  "Accumulated withdrawn amount in depositAsset"
+  lifetimeWithdrawn: BigDecimal!
+  "Accumulated withdrawn amount in USD. Conversion into USD done at event time"
+  lifetimeWithdrawnUSD: BigDecimal
+  "Accumulated borrowed amount in borrowAsset"
+  lifetimeBorrowed: BigDecimal!
+  "Accumulated borrowed amount in USD. Conversion into USD done at event time"
+  lifetimeBorrowedUSD: BigDecimal
+  "Accumulated repaid amount in borrowAsset"
+  lifetimeRepaid: BigDecimal!
+  "Accumulated repaid amount in USD. Conversion into USD done at event time"
+  lifetimeRepaidUSD: BigDecimal
+  "Accumulated liquidated amount in depositAsset"
+  lifetimeLiquidated: BigDecimal!
+  "Accumulated liquidated amount in USD. Conversion into USD done at event time"
+  lifetimeLiquidatedUSD: BigDecimal
+
+  # Same comment as acp applies to these counts in acm. I think we should remove these.
+  "The number of times Deposits have occurred in this Market by this Account"
+  depositCount: Int! #SP: DISCARD
+  "The number of times Withdraws have occurred in this Market by this Account"
+  withdrawCount: Int! #SP: DISCARD
+  "The number of times Borrows have occurred in this Market by this Account"
+  borrowCount: Int! #SP: DISCARD
+  "The number of times Repays have occurred in this Market by this Account"
+  repayCount: Int! #SP: DISCARD
+  "The number of times Liquidations have occurred in this Market by this Account"
+  liquidatedCount: Int! #SP: DISCARD
+}
+
+"""
+An event is a general action that occurs in a Lending Protocol
+"""
+type Event @entity {
+  "The Protocol the event originated from"
+  protocol: Protocol!
+  "Transaction hash concatenated with log index"
+  id: ID!
+  "The Market within a Protocol the event originated from"
+  market: Market!
+  "Main account involved in the event"
+  account: Account!
+  "Account to be transferred to - Relevant to Transfer event"
+  to: Account
+  "Event type: Deposit Withdraw Borrow Repay Liquidate"
+  eventType: String!
+  "Amount of Tokens transferred - Underlying"
+  amount: BigDecimal! #SP: The distinction between the tokens used here and xTokenAmount needs to be discussed
+  "Block timestamp"
+  blockTime: Int! #SP: DISCARD because if we have blockNumber, I think we don't need blockTime or viceversa.
+  "Block number"
+  blockNumber: Int!
+  "Amount of Tokens transferred - used only in specific cases"
+  xTokenAmount: BigDecimal #SP: see 'amount' and I also think this needs a different description.
+  "Liquidator that paid the debt: Relevant only for Liquidation event"
+  liquidator: Account
+  "Account of the payer - Related to Repay event"
+  payer: Account #SP: I wonder if we can get rid of this and instead lump this detail into LifetimeRepaid or something in acp and acm, this way if a person's repaid is bigger than their lifetimeBorrowed, it shows that they repaid someone else's loan... Hmm I can see keeping it separate as a good thing though so we can further incentivize good actors in our protocol (people paying off other people's debt to keep the protocol healthy).
+  "Account that was paid by account field"
+  onBehalfOf: Account # #SP: DISCARD not really used, only used in Aave, and I'm not sure it's relevant for us. Comes back to my point on repaid above.
+  "Interest rate mode"
+  interestRateMode: Int #SP: DISCARD not really used
+  "Borrow rate"
+  borrowRate: BigInt #SP: DISCARD not really used
+}
+
+type Contract @entity {
+  id: ID!
+  name: String
+}

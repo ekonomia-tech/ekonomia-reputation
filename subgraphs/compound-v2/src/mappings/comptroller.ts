@@ -16,42 +16,6 @@ export function handleMarketEntered(event: MarketEntered): void {
     let market = getOrCreateMarket(event.params.cToken.toHexString())
     let account = getOrCreateAccount(event.params.account.toHexString())
     let protocol = getProtocol(market.protocol)
-    getOrCreateAccountInProtocol(protocol.id, account.id)
-    getOrCreateAccountInMarket(market.id, account.id)
+    getOrCreateAccountInProtocol(protocol.id, account.id, "LT")
+    getOrCreateAccountInMarket(market.id, account.id, "LT")
 }
-
-export function handleMarketExited(event: MarketExited): void {}
-
-export function handleNewPriceOracle(event: NewPriceOracle): void {
-    let protocol = getProtocol("COMPOUND-ETHEREUM")
-    // This is the first event used in this mapping, so we use it to create the entity
-    protocol.priceOracle = event.params.newPriceOracle
-    protocol.save()
-}
-
-export function handleNewMaxAssets(event: NewMaxAssets): void {
-    let protocol = getProtocol("COMPOUND-ETHEREUM")
-    protocol.maxAssets = event.params.newMaxAssets
-    protocol.save()
-}
-
-export function handleNewLiquidationIncentive(event: NewLiquidationIncentive): void {
-    let protocol = getProtocol("COMPOUND-ETHEREUM")
-    protocol.liquidationIncentive = event.params.newLiquidationIncentiveMantissa
-    protocol.save()
-}
-
-export function handleNewCollateralFactor(event: NewCollateralFactor): void {
-    let market = getOrCreateMarket(event.params.cToken.toHexString())
-    market.collateralFactor = event.params.newCollateralFactorMantissa
-    .toBigDecimal()
-    .div(mantissaFactorBD)
-    market.save()
-
-}
-
-export function handleNewCloseFactor(event: NewCloseFactor): void {
-    let protocol = getProtocol("COMPOUND-ETHEREUM") 
-    protocol.closeFactor = event.params.newCloseFactorMantissa
-    protocol.save()
-  }

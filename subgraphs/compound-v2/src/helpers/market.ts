@@ -47,8 +47,6 @@ export function getOrCreateMarket(marketAddress: string): Market {
         assetSymbol = 'DAI'
       }
     }
-  
-    let interestRateModelAddress = contract.try_interestRateModel()
 
     let asset = getOrCreateAsset(assetAddress.toHexString());
     asset.name = assetName
@@ -56,15 +54,8 @@ export function getOrCreateMarket(marketAddress: string): Market {
     asset.decimals = assetDecimals
     asset.save()
 
-    market.deposited = zeroBD
-    market.borrowed = zeroBD
-    market.collateralFactor = zeroBD
-    market.exchangeRate = zeroBD
-    market.interestRateModelAddress = interestRateModelAddress.reverted
-      ? Address.fromString('0x0000000000000000000000000000000000000000')
-      : interestRateModelAddress.value
-    market.name = contract.name()
-    market.symbol = contract.symbol()
+
+    market.name = assetName
     market.protocol = protocol.id
     market.asset = asset.id
     market.collateralBackedAsset = null
@@ -74,15 +65,5 @@ export function getOrCreateMarket(marketAddress: string): Market {
 }
 
 export function updateMarketStats(marketId: string, eventType: string, amount: BigDecimal): void {
-    let market = getOrCreateMarket(marketId)
-    if (eventType == "DEPOSIT") {
-        market.deposited.plus(amount)
-    } else if (eventType == "WITHDRAW") {
-        market.deposited.minus(amount)
-    } else if (eventType == "BORROW") {
-        market.borrowed.plus(amount)
-    } else if (["REPAY", "LIQUIDATION"].includes(eventType)) {
-        market.borrowed.minus(amount)
-    }
-    market.save()
+  //  TODO
 }

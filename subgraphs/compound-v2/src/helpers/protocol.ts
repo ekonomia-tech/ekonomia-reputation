@@ -8,9 +8,6 @@ export function createProtocol(protocolAddress: Address, name: string): Protocol
     protocol.network = network
     protocol.address = protocolAddress
     protocol.type = "POOLED"
-    protocol.priceOracle = null
-    protocol.closeFactor = null
-    protocol.maxAssets = null
     protocol.save()
 
     return protocol;

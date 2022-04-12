@@ -180,14 +180,14 @@ export function handleLiquidate(event: LiquidationCall): void {
 }
 
 
-export function handleReserveDataUpdated(event: ReserveDataUpdated): void {
+// export function handleReserveDataUpdated(event: ReserveDataUpdated): void {
   
-  let market = getMarket(event.params.reserve.toHexString())
-  market.liquidityRate = event.params.liquidityRate
-  market.liquidityIndex = event.params.liquidityIndex
-  market.stableBorrowRate = event.params.stableBorrowRate
-  market.variableBorrowIndex = event.params.variableBorrowIndex
-  market.variableBorrowRate = event.params.variableBorrowRate
+//   let market = getMarket(event.params.reserve.toHexString())
+//   market.liquidityRate = event.params.liquidityRate
+//   market.liquidityIndex = event.params.liquidityIndex
+//   market.stableBorrowRate = event.params.stableBorrowRate
+//   market.variableBorrowIndex = event.params.variableBorrowIndex
+//   market.variableBorrowRate = event.params.variableBorrowRate
 
-  market.save()
-}
+//   market.save()
+// }
