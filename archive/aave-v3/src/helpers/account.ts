@@ -1,4 +1,5 @@
 import { BigDecimal, BigInt } from "@graphprotocol/graph-ts";
+import { getConcatenatedId } from "../../../../subgraphs/compound-v2/src/helpers/generic";
 import { Account, AccountInMarket, AccountInProtocol } from "../../generated/schema";
 import { zeroBD, zeroInt } from "./generic";
 
@@ -31,7 +32,7 @@ export function addToLiquidationCount(account: Account, isLiquidated: boolean): 
 }
 
 export function getOrCreateAccountInProtocol(protocolId: string, accountId: string): AccountInProtocol {
-  const acpId = protocolId.concat('-').concat(accountId);
+  const acpId = getConcatenatedId([protocolId, accountId])
   let acp = AccountInProtocol.load(acpId)
   if (!acp) {
     acp = new AccountInProtocol(acpId)

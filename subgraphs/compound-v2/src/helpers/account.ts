@@ -1,7 +1,7 @@
-import { BigDecimal, BigInt, ethereum } from "@graphprotocol/graph-ts";
+import { BigDecimal } from "@graphprotocol/graph-ts";
 import { Account, AccountInMarket, AccountInProtocol } from "../../generated/schema";
 import { getOrCreateAsset } from "./asset";
-import { getConcatenatedId, getOrCreateAssetTotals, getOrCreateCountTotals, getOrCreateUSDTotals, zeroBD, zeroInt } from "./generic";
+import { getConcatenatedId, getOrCreateAssetTotals, getOrCreateCountTotals } from "./generic";
 import { getOrCreateMarket } from "./market";
 
 export function getOrCreateAccount(accountId: string): Account {
@@ -35,20 +35,18 @@ export function addToLiquidationCount(account: Account, isLiquidated: boolean): 
   account.save()
 }
 
-export function getOrCreateAccountInMarket(marketId: string, accountId: string, period: string): AccountInMarket {
-  const acmId = marketId.concat('-').concat(accountId).concat('-').concat(period);
+export function getOrCreateAccountInMarket(marketId: string, accountId: string): AccountInMarket {
+  const acmId = getConcatenatedId([accountId, marketId])
   let acm = AccountInMarket.load(acmId)
   if (!acm) {
     let market = getOrCreateMarket(marketId)
     let asset = getOrCreateAsset(market.asset)
-    let USDTotal =  getOrCreateUSDTotals(acmId.concat("-USD"))
-    let countTotal = getOrCreateCountTotals(acmId.concat("-count"))
-    let assetTotal = getOrCreateAssetTotals(acmId.concat("-").concat(asset.id))
+    let countTotal = getOrCreateCountTotals(getConcatenatedId([acmId, "count"]))
+    let assetTotal = getOrCreateAssetTotals(getConcatenatedId([acmId, asset.id]))
     
     acm = new AccountInMarket(acmId)
     acm.market = marketId
     acm.account = accountId
-    acm.USDTotals = USDTotal.id
     acm.assetTotals = assetTotal.id
     acm.countTotals = countTotal.id
     acm.save()
@@ -56,29 +54,17 @@ export function getOrCreateAccountInMarket(marketId: string, accountId: string, 
   return acm
 }
 
-export function updateAccountStats(protocolId: string, marketId: string, accountId: string, amount: BigDecimal, eventType: string): void {
-  
-  // update account in market
-  // update account in protocol
-}
-
-export function updateAccountInProtocol(protocolId: string, accountId: string, eventType: string, period: string): void {
-   let aip = getOrCreateAccountInProtocol(protocolId, accountId, period)
-   
-}
-
-export function getOrCreateAccountInProtocol(protocolId: string, accountId: string, period: string) : AccountInProtocol {
-  let aipId = getConcatenatedId ([protocolId, accountId, period])
+export function getOrCreateAccountInProtocol(protocolId: string, accountId: string) : AccountInProtocol {
+  let aipId = getConcatenatedId ([protocolId, accountId])
   let aip = AccountInProtocol.load(aipId);
   if (aip) {
     return aip
   }
   aip = new AccountInProtocol(aipId)
-  let USDTotals = getOrCreateUSDTotals(getConcatenatedId([aipId, "USD", period]))
-  let countTotals = getOrCreateCountTotals(getConcatenatedId([aipId, "count", period]))
+  
+  let countTotals = getOrCreateCountTotals(getConcatenatedId([aipId, "count"]))
   aip.account = accountId
   aip.protocol = protocolId
-  aip.USDTotals = USDTotals.id
   aip.countTotals = countTotals.id
   
   aip.save()

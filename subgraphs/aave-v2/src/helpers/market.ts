@@ -1,6 +1,9 @@
 import { BigDecimal, BigInt, log } from "@graphprotocol/graph-ts";
-import { Account, Event, Market, Position } from "../../generated/schema";
-import { getConcatenatedId } from "./generic";
+import { Account, Event, Market, Position, Protocol } from "../../generated/schema";
+import { getOrCreateAccountInMarket } from "./account";
+import { getOrCreateAsset } from "./asset";
+import { getConcatenatedId, getOrCreateAssetTotals, getOrCreateCountTotals, getOrCreateUSDTotals } from "./generic";
+import { updateProtocolStats } from "./protocol";
 
 export function getMarket(marketId: string): Market {
     let market = Market.load(marketId);
@@ -10,9 +13,37 @@ export function getMarket(marketId: string): Market {
     return new Market("")
 }
 
+export function updateStatistics(account: Account, market: Market, protocol: Protocol , event: Event): void {
+    updateMarketPositions(account, market, event)
+    updateMarketStats(account, market, event)
+    updateProtocolStats(account, protocol, event)
+}
 
-export function updateMarketStats(marketId: string, eventType: string, amount: BigDecimal): void {
-   // TODO
+export function updateMarketStats(account: Account, market: Market, event: Event): void {
+  let asset = getOrCreateAsset(market.asset)
+  let aim = getOrCreateAccountInMarket(market.id, account.id)
+  let aimAsset = getOrCreateAssetTotals(getConcatenatedId([aim.id, asset.id]))
+  let aimCount = getOrCreateCountTotals(getConcatenatedId([aim.id, "count"]))
+  
+  if(event.eventType == "BORROW") {
+    aimAsset.borrowed = aimAsset.borrowed.plus(event.amount)
+    aimCount.borrowed += 1
+  } else if(event.eventType == "REPAY") {
+    aimAsset.repaid = aimAsset.repaid.plus(event.amount)
+    aimCount.repaid += 1
+  } else if(event.eventType == "DEPOSIT") {
+    aimAsset.deposited = aimAsset.deposited.plus(event.amount)
+    aimCount.deposited += 1
+  } else if(event.eventType == "WITHDRAW") {
+    aimAsset.withdrawn = aimAsset.withdrawn.plus(event.amount)
+    aimCount.withdrawn += 1
+  } else if (event.eventType == "LIQUIDATION") {
+    aimAsset.liquidated = aimAsset.liquidated.plus(event.amount)
+    aimCount.liquidated += 1
+  }
+
+  aimAsset.save()
+  aimCount.save()
 }
 
 export function updateMarketPositions(account: Account, market: Market, event: Event): void {
@@ -20,7 +51,7 @@ export function updateMarketPositions(account: Account, market: Market, event: E
   if (!(account.id && market.id)) {
     return
   }
-  
+
   // verify the event is not LIQUIDATION or TRANSFER
   if (!shouldProcess(event.eventType)) {
     return;

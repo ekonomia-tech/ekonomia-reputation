@@ -16,6 +16,6 @@ export function handleMarketEntered(event: MarketEntered): void {
     let market = getOrCreateMarket(event.params.cToken.toHexString())
     let account = getOrCreateAccount(event.params.account.toHexString())
     let protocol = getProtocol(market.protocol)
-    getOrCreateAccountInProtocol(protocol.id, account.id, "LT")
-    getOrCreateAccountInMarket(market.id, account.id, "LT")
+    getOrCreateAccountInProtocol(protocol.id, account.id)
+    getOrCreateAccountInMarket(market.id, account.id)
 }

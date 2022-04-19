@@ -43,30 +43,30 @@ type AssetTotal @entity {
   "Id made up from parent id + [period]  e.g. [MarketId]+[AccountId]+[SeasonId]+[assetId]"
   id: ID!
   "Total Asset deposited"
-  deposited: BigDecimal
+  deposited: BigDecimal!
   "Total Asset withdrawn"
-  withdrawn: BigDecimal
+  withdrawn: BigDecimal!
   "Total Asset borrowed"
-  borrowed: BigDecimal
+  borrowed: BigDecimal!
   "Total Asset repaid"
-  repaid: BigDecimal
+  repaid: BigDecimal!
   "Total Asset liquidated"
-  liquidated: BigDecimal
+  liquidated: BigDecimal!
 }
 
 type CountTotal @entity {
   "Id made up from parent id + [period]  e.g. [MarketId]+[AccountId]+[SeasonId]"
   id: ID!
   "Total deposited count"
-  deposited: Int
+  deposited: Int!
   "Total withdrawn count"
-  withdrawn: Int
+  withdrawn: Int!
   "Total borrowed count"
-  borrowed: Int
+  borrowed: Int!
   "Total repaid count"
-  repaid: Int
+  repaid: Int!
   "Total liquidated count"
-  liquidated: Int
+  liquidated: Int!
 }
 
 """
@@ -141,6 +141,8 @@ type Account @entity {
   markets: [AccountInMarket!]! @derivedFrom(field: "account")
   "A flag the signifies a user requested his reputation from our system"
   reputationRequested: Boolean
+  "Account reputation object"
+  reputation: Reputation!
 }
 
 """
@@ -153,8 +155,8 @@ type AccountInProtocol @entity {
   protocol: Protocol!
   "Account which has participated in the Protocol"
   account: Account!
-  "USD Totals for entity"
-  USDTotals: USDTotal!
+  # "USD Totals for entity"
+  # USDTotals: USDTotal!
   "Action count totals for entity"
   countTotals: CountTotal
 }
@@ -169,8 +171,8 @@ type AccountInMarket @entity {
   market: Market!
   "Account involved in this market"
   account: Account!
-  "USD Totals for entity"
-  USDTotals: USDTotal!
+  # "USD Totals for entity"
+  # USDTotals: USDTotal!
   "Asset totals for entity"
   assetTotals: AssetTotal
   "Action count totals for entity"
@@ -204,6 +206,13 @@ type Position @entity {
   interestPaid: BigDecimal!
   "Closed positions count"
   closedPositions: [Position!]!
+}
+
+type Reputation @entity {
+  "Account ID + REP"
+  id: ID!
+  "Total experience accumulated"
+  exp: BigInt!
 }
 
 type AccountInSeason @entity {

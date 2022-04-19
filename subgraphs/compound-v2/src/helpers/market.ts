@@ -1,10 +1,11 @@
 import { Address, BigDecimal, BigInt, ethereum } from "@graphprotocol/graph-ts";
+import { getOrCreateAccountInMarket } from "../../../aave-v2/src/helpers/account";
 import { ERC20 } from "../../generated/Comptroller/ERC20";
 import { Account, Market, Protocol, Position, Event } from "../../generated/schema";
 import { CToken } from "../../generated/templates/CToken/CToken";
 import { getOrCreateAsset } from "./asset";
-import { CETH_ADDRESS , DAI_V1_ADDRESS , getConcatenatedId, UNITROLLER_ADDRESS , zeroBD } from "./generic";
-import { createProtocol } from "./protocol";
+import { CETH_ADDRESS , DAI_V1_ADDRESS , getConcatenatedId, getOrCreateAssetTotals, getOrCreateCountTotals, UNITROLLER_ADDRESS , zeroBD } from "./generic";
+import { createProtocol, updateProtocolStats } from "./protocol";
 
 export function getOrCreateMarket(marketAddress: string): Market {
     let market = Market.load(marketAddress);
@@ -61,6 +62,39 @@ export function getOrCreateMarket(marketAddress: string): Market {
     market.save()
     
     return market
+}
+
+export function updateStatistics(account: Account, market: Market, protocol: Protocol , event: Event): void {
+  updateMarketPositions(account, market, event)
+  updateMarketStats(account, market, event)
+  updateProtocolStats(account, protocol, event)
+}
+
+export function updateMarketStats(account: Account, market: Market, event: Event): void {
+  let asset = getOrCreateAsset(market.asset)
+  let aim = getOrCreateAccountInMarket(market.id, account.id)
+  let aimAsset = getOrCreateAssetTotals(getConcatenatedId([aim.id, asset.id]))
+  let aimCount = getOrCreateCountTotals(getConcatenatedId([aim.id, "count"]))
+
+  if(event.eventType == "BORROW") {
+    aimAsset.borrowed = aimAsset.borrowed.plus(event.amount)
+    aimCount.borrowed += 1
+  } else if(event.eventType == "REPAY") {
+    aimAsset.repaid = aimAsset.repaid.plus(event.amount)
+    aimCount.repaid += 1
+  } else if(event.eventType == "DEPOSIT") {
+    aimAsset.deposited = aimAsset.deposited.plus(event.amount)
+    aimCount.deposited += 1
+  } else if(event.eventType == "WITHDRAW") {
+    aimAsset.withdrawn = aimAsset.withdrawn.plus(event.amount)
+    aimCount.withdrawn += 1
+  } else if (event.eventType == "LIQUIDATION") {
+    aimAsset.liquidated = aimAsset.liquidated.plus(event.amount)
+    aimCount.liquidated += 1
+  }
+
+  aimAsset.save()
+  aimCount.save()
 }
 
 export function updateMarketPositions(account: Account, market: Market, event: Event): void {
