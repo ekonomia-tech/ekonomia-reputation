@@ -63,3 +63,18 @@ countTotal.save()
 
 return countTotal
 }
+
+
+export function getConcatenatedId(list: string[]): string {
+  let result = "";
+  for(let i = 0; i < list.length; i++) {
+    if (!list[i]) {
+      continue
+    }
+    result = result.concat(list[i]);
+    if (i+1 < list.length && list[i+1]) [
+      result = result.concat('-')
+    ]
+  }
+  return result;
+}

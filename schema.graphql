@@ -139,6 +139,8 @@ type Account @entity {
   protocols: [AccountInProtocol!]! @derivedFrom(field: "account")
   "Markets that are associated to the account"
   markets: [AccountInMarket!]! @derivedFrom(field: "account")
+  "A flag the signifies a user requested his reputation from our system"
+  reputationRequested: Boolean
 }
 
 """
@@ -173,6 +175,35 @@ type AccountInMarket @entity {
   assetTotals: AssetTotal
   "Action count totals for entity"
   countTotals: CountTotal
+}
+
+type Position @entity {
+  "Build from accountid + marketid + type"
+  id: ID!
+  "account id"
+  account: Account!
+  "Market id"
+  market: Market!
+  "position type - Borrowing | Lending"
+  type: String
+  "The balance of the position"
+  balance: BigDecimal!
+  "total borrowed"
+  borrowed: BigDecimal!
+  "total borrowed"
+  repaid: BigDecimal!
+  "total borrowed"
+  deposited: BigDecimal!
+  "total borrowed"
+  withdrawn: BigDecimal!
+  "Is position closed - can be determined when repay > borrow or withdraw > deposit"
+  isActive: Boolean!
+  "Related event to the open position"
+  events: [Event!]!
+  "Interest paid - can be calculated once repay > borrow or withdraw > deposit"
+  interestPaid: BigDecimal!
+  "Closed positions count"
+  closedPositions: [Position!]!
 }
 
 type AccountInSeason @entity {

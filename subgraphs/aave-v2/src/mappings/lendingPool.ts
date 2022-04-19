@@ -3,7 +3,7 @@ import { Event } from '../../generated/schema';
 import { Borrow, LiquidationCall, RebalanceStableBorrowRate, Repay, ReserveDataUpdated, Deposit, Withdraw } from '../../generated/templates/LendingPool/LendingPool';
 import { addToLiquidationCount, getOrCreateAccount, markAccountAsBorrowed, updateAccountStats } from '../helpers/account';
 import { AAVE_V2_REGISTRY, exponentToBigDecimal } from '../helpers/generic';
-import { getMarket, updateMarketStats } from '../helpers/market';
+import { getMarket, updateMarketPositions, updateMarketStats } from '../helpers/market';
 import { getProtocol } from '../helpers/protocol';
 
 export function handleBorrow(event: Borrow): void {
@@ -37,8 +37,9 @@ export function handleBorrow(event: Borrow): void {
     eventEntry.blockNumber = event.block.number.toI32()
     eventEntry.save();
 
-    updateMarketStats(market.id, "BORROW", borrowAmount)
-    updateAccountStats(protocol.id, market.id, account.id, borrowAmount, eventEntry.eventType)
+    updateMarketPositions(account, market, eventEntry)
+    // updateMarketStats(market.id, "BORROW", borrowAmount)
+    // updateAccountStats(protocol.id, market.id, account.id, borrowAmount, eventEntry.eventType)
   }
 
 export function handleDeposit(event: Deposit): void {
@@ -69,8 +70,9 @@ export function handleDeposit(event: Deposit): void {
     eventEntry.blockNumber = event.block.number.toI32()
     eventEntry.save();
 
-    updateMarketStats(market.id, "DEPOSIT", depositAmount)
-    updateAccountStats(protocol.id, market.id, account.id, depositAmount, eventEntry.eventType)
+    updateMarketPositions(account, market, eventEntry)
+    // updateMarketStats(market.id, "DEPOSIT", depositAmount)
+    // updateAccountStats(protocol.id, market.id, account.id, depositAmount, eventEntry.eventType)
 }
 
 export function handleWithdraw(event: Withdraw): void {
@@ -101,8 +103,10 @@ export function handleWithdraw(event: Withdraw): void {
     eventEntry.to = to.id
     eventEntry.save();
 
-    updateMarketStats(market.id, "WITHDRAW", depositAmount)
-    updateAccountStats(protocol.id, market.id, account.id, depositAmount, eventEntry.eventType)
+    updateMarketPositions(account, market, eventEntry)
+
+    // updateMarketStats(market.id, "WITHDRAW", depositAmount)
+    // updateAccountStats(protocol.id, market.id, account.id, depositAmount, eventEntry.eventType)
 }
 
 export function handleRepay(event: Repay): void {
@@ -133,8 +137,9 @@ export function handleRepay(event: Repay): void {
     eventEntry.blockNumber = event.block.number.toI32()
     eventEntry.save();
 
-    updateMarketStats(market.id, "REPAY", repayAmount)
-    updateAccountStats(protocol.id, market.id, account.id, repayAmount, eventEntry.eventType)
+    updateMarketPositions(account, market, eventEntry)
+    // updateMarketStats(market.id, "REPAY", repayAmount)
+    // updateAccountStats(protocol.id, market.id, account.id, repayAmount, eventEntry.eventType)
 }
 
 export function handleLiquidate(event: LiquidationCall): void {
@@ -175,8 +180,10 @@ export function handleLiquidate(event: LiquidationCall): void {
     eventEntry.blockNumber = event.block.number.toI32()
     eventEntry.save();
     
-    updateMarketStats(market.id, "LIQUIDATION", LiquidateAmount)
-    updateAccountStats(protocol.id, market.id, account.id, LiquidateAmount, eventEntry.eventType)
+    updateMarketPositions(account, market, eventEntry)
+    
+    // updateMarketStats(market.id, "LIQUIDATION", LiquidateAmount)
+    // updateAccountStats(protocol.id, market.id, account.id, LiquidateAmount, eventEntry.eventType)
 }
 
 
