@@ -143,6 +143,8 @@ type Account @entity {
   reputationRequested: Boolean
   "Account reputation object"
   reputation: Reputation!
+  "Count totals of account in all protocols"
+  countTotals: CountTotal!
 }
 
 """
@@ -212,7 +214,11 @@ type Reputation @entity {
   "Account ID + REP"
   id: ID!
   "Total experience accumulated"
-  exp: BigInt!
+  exp: Int!
+  "Number of clsoed borrow positions the user has concluded"
+  closedBorrowPositions: Int!
+  "Number of clsoed deposit positions the user has concluded"
+  closedDepositPositions: Int!
 }
 
 type AccountInSeason @entity {

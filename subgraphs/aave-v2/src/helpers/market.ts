@@ -1,9 +1,10 @@
-import { BigDecimal, BigInt, log } from "@graphprotocol/graph-ts";
+import { BigDecimal } from "@graphprotocol/graph-ts";
 import { Account, Event, Market, Position, Protocol } from "../../generated/schema";
-import { getOrCreateAccountInMarket } from "./account";
+import { getOrCreateAccount, getOrCreateAccountInMarket, updateAccountStats } from "./account";
 import { getOrCreateAsset } from "./asset";
-import { getConcatenatedId, getOrCreateAssetTotals, getOrCreateCountTotals, getOrCreateUSDTotals } from "./generic";
+import { getConcatenatedId, getOrCreateAssetTotals, getOrCreateCountTotals } from "./generic";
 import { updateProtocolStats } from "./protocol";
+import { incrementReputationStats } from "./reputation";
 
 export function getMarket(marketId: string): Market {
     let market = Market.load(marketId);
@@ -17,6 +18,7 @@ export function updateStatistics(account: Account, market: Market, protocol: Pro
     updateMarketPositions(account, market, event)
     updateMarketStats(account, market, event)
     updateProtocolStats(account, protocol, event)
+    updateAccountStats(account, event)
 }
 
 export function updateMarketStats(account: Account, market: Market, event: Event): void {
@@ -114,6 +116,7 @@ export function updatePosition(position: Position, event: Event): void {
   
   let potentialInterest = BigDecimal.zero()
   let newPos: Position
+  let account = getOrCreateAccount(position.account)
   
   let pEvents = position.events
   pEvents.push(event.id)
@@ -143,6 +146,8 @@ export function updatePosition(position: Position, event: Event): void {
       position.closedPositions = cEvents
       position.save()
 
+      incrementReputationStats(account, "BOR")
+
       position = resetPositionStats(position)
       position.save()
     }
@@ -169,6 +174,8 @@ export function updatePosition(position: Position, event: Event): void {
       cEvents.push(newPos.id)
       position.closedPositions = cEvents
       position.save()
+
+      incrementReputationStats(account,"LEN")
 
       position = resetPositionStats(position)
       position.save()

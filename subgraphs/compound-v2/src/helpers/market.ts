@@ -1,11 +1,13 @@
-import { Address, BigDecimal, BigInt, ethereum } from "@graphprotocol/graph-ts";
+import { Address, BigDecimal } from "@graphprotocol/graph-ts";
 import { getOrCreateAccountInMarket } from "../../../aave-v2/src/helpers/account";
 import { ERC20 } from "../../generated/Comptroller/ERC20";
-import { Account, Market, Protocol, Position, Event } from "../../generated/schema";
+import { Account, Event, Market, Position, Protocol } from "../../generated/schema";
 import { CToken } from "../../generated/templates/CToken/CToken";
+import { getOrCreateAccount } from "./account";
 import { getOrCreateAsset } from "./asset";
-import { CETH_ADDRESS , DAI_V1_ADDRESS , getConcatenatedId, getOrCreateAssetTotals, getOrCreateCountTotals, UNITROLLER_ADDRESS , zeroBD } from "./generic";
+import { CETH_ADDRESS, DAI_V1_ADDRESS, getConcatenatedId, getOrCreateAssetTotals, getOrCreateCountTotals, UNITROLLER_ADDRESS } from "./generic";
 import { createProtocol, updateProtocolStats } from "./protocol";
+import { incrementReputationStats } from "./reputation";
 
 export function getOrCreateMarket(marketAddress: string): Market {
     let market = Market.load(marketAddress);
@@ -165,6 +167,7 @@ export function updatePosition(position: Position, event: Event): void {
   
   let potentialInterest = BigDecimal.zero()
   let newPos: Position
+  let account = getOrCreateAccount(position.account)
   
   let pEvents = position.events
   pEvents.push(event.id)
@@ -194,6 +197,8 @@ export function updatePosition(position: Position, event: Event): void {
       position.closedPositions = cEvents
       position.save()
 
+      incrementReputationStats(account, "BOR")
+
       position = resetPositionStats(position)
       position.save()
     }
@@ -220,6 +225,8 @@ export function updatePosition(position: Position, event: Event): void {
       cEvents.push(newPos.id)
       position.closedPositions = cEvents
       position.save()
+
+      incrementReputationStats(account, "LEN")
 
       position = resetPositionStats(position)
       position.save()

@@ -1,7 +1,6 @@
-import { MarketEntered, MarketExited, MarketListed, NewCloseFactor, NewCollateralFactor, NewLiquidationIncentive, NewMaxAssets, NewPriceOracle } from "../../generated/Comptroller/Comptroller"
+import { MarketEntered, MarketListed } from "../../generated/Comptroller/Comptroller"
 import { CToken } from "../../generated/templates"
 import { getOrCreateAccount, getOrCreateAccountInMarket, getOrCreateAccountInProtocol } from "../helpers/account"
-import { mantissaFactorBD  } from "../helpers/generic"
 import { getOrCreateMarket } from "../helpers/market"
 import { getProtocol } from "../helpers/protocol"
 

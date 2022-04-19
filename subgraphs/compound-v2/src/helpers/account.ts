@@ -1,22 +1,25 @@
-import { BigDecimal } from "@graphprotocol/graph-ts";
 import { Account, AccountInMarket, AccountInProtocol } from "../../generated/schema";
 import { getOrCreateAsset } from "./asset";
 import { getConcatenatedId, getOrCreateAssetTotals, getOrCreateCountTotals } from "./generic";
 import { getOrCreateMarket } from "./market";
+import { getOrCreateReputation } from "./reputation";
 
 export function getOrCreateAccount(accountId: string): Account {
-    let account = Account.load(accountId);
-    if (!account) {
-      account = new Account(accountId)
-      account.hasBorrowed = false
-      account.liquidatedCount = 0
-      account.liquidatingCount = 0
-      account.assets = []
-      account.seasons = []
-      account.reputationRequested = false
-      account.save()
-    }
-    return account;
+  let account = Account.load(accountId);
+  if (!account) {
+    account = new Account(accountId)
+    let reputation = getOrCreateReputation(getConcatenatedId([account.id, "REP"]))
+    let countTotals = getOrCreateCountTotals(getConcatenatedId([account.id, "count"]))
+    account.hasBorrowed = false
+    account.liquidatedCount = 0
+    account.liquidatingCount = 0
+    account.assets = []
+    account.seasons = []
+    account.reputation = reputation.id
+    account.countTotals = countTotals.id
+    account.save()
+  }
+  return account;
 }
 
 export function markAccountAsBorrowed(accountId: string): void {

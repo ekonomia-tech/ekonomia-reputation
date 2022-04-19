@@ -1,21 +1,27 @@
-import { Account, AccountInMarket, AccountInProtocol } from "../../generated/schema";
+import { Account, AccountInMarket, AccountInProtocol, Event } from "../../generated/schema";
 import { getOrCreateAsset } from '../helpers/asset';
 import { getMarket } from '../helpers/market';
 import { getConcatenatedId, getOrCreateAssetTotals, getOrCreateCountTotals } from "./generic";
+import { getOrCreateReputation } from "./reputation";
 
 export function getOrCreateAccount(accountId: string): Account {
   let account = Account.load(accountId);
   if (!account) {
     account = new Account(accountId)
+    let reputation = getOrCreateReputation(getConcatenatedId([account.id, "REP"]))
+    let countTotals = getOrCreateCountTotals(getConcatenatedId([account.id, "count"]))
     account.hasBorrowed = false
     account.liquidatedCount = 0
     account.liquidatingCount = 0
     account.assets = []
     account.seasons = []
+    account.reputation = reputation.id
+    account.countTotals = countTotals.id
     account.save()
   }
   return account;
 }
+
 
 export function markAccountAsBorrowed(accountId: string): void {
   let account = getOrCreateAccount(accountId);
@@ -64,4 +70,20 @@ export function getOrCreateAccountInMarket(marketId: string, accountId: string):
     acm.save()
   }
   return acm
+}
+
+export function updateAccountStats(account: Account, event: Event): void {
+  let accountTotals = getOrCreateCountTotals(getConcatenatedId([account.id, "count"]))
+  
+  if(event.eventType == "BORROW") {
+    accountTotals.borrowed += 1
+  } else if(event.eventType == "REPAY") {
+    accountTotals.repaid += 1
+  } else if(event.eventType == "DEPOSIT") {
+    accountTotals.deposited += 1
+  } else if(event.eventType == "WITHDRAW") {
+    accountTotals.withdrawn += 1
+  } else if (event.eventType == "LIQUIDATION") {
+    accountTotals.liquidated += 1
+  }
 }
