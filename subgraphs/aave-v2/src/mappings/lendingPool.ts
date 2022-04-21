@@ -1,7 +1,9 @@
+import { log } from '@graphprotocol/graph-ts';
 import { getOrCreateAsset } from '../../../compound-v2/src/helpers/asset';
 import { Event } from '../../generated/schema';
 import { Borrow, Deposit, LiquidationCall, Repay, Withdraw } from '../../generated/templates/LendingPool/LendingPool';
 import { addToLiquidationCount, getOrCreateAccount, markAccountAsBorrowed } from '../helpers/account';
+import { toUSD } from '../helpers/asset';
 import { exponentToBigDecimal } from '../helpers/generic';
 import { getMarket, updateStatistics } from '../helpers/market';
 import { getProtocol } from '../helpers/protocol';
@@ -37,6 +39,7 @@ export function handleBorrow(event: Borrow): void {
     eventEntry.blockNumber = event.block.number.toI32()
     eventEntry.save();
 
+    log.warning("Token: {}, address: {}, Amount: {}, USD Amount: {}", [asset.symbol, asset.id, eventEntry.amount.toString(), toUSD(asset.id, eventEntry.amount).toString()])
     updateStatistics(account, market, protocol, eventEntry)
   }
 

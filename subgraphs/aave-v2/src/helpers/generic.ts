@@ -78,3 +78,8 @@ export function getConcatenatedId(list: string[]): string {
   }
   return result;
 }
+
+
+export function daysDiff(start: i32, end: i32): i32 {
+  return (end - start) / 86400
+}
