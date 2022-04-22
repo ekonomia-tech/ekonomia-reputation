@@ -39,7 +39,7 @@ export function handleBorrow(event: Borrow): void {
     eventEntry.blockNumber = event.block.number.toI32()
     eventEntry.save();
 
-    log.warning("Token: {}, address: {}, Amount: {}, USD Amount: {}", [asset.symbol, asset.id, eventEntry.amount.toString(), toUSD(asset.id, eventEntry.amount).toString()])
+    log.warning("Token: {}, address: {}, Amount: {}, USD Amount: {}, block: {}", [asset.symbol, asset.id, eventEntry.amount.toString(), toUSD(asset.id, eventEntry.amount).toString(), eventEntry.blockNumber.toString()])
     updateStatistics(account, market, protocol, eventEntry)
   }
 

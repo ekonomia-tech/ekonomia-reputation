@@ -5,10 +5,10 @@ import { Address, BigInt, ethereum } from "@graphprotocol/graph-ts";
 import {
   SushiSwapPair as SushiSwapPairContract,
   SushiSwapPair__getReservesResult,
-} from "../../../../generated/UniswapV2Factory/SushiSwapPair";
-import { SushiSwapRouter as SushiSwapRouterContract } from "../../../../generated/UniswapV2Factory/SushiSwapRouter";
+} from "../../../generated/templates/LendingPool/SushiSwapPair";
+import { SushiSwapRouter as SushiSwapRouterContract } from "../../../generated/templates/LendingPool/SushiSwapRouter";
 
-export function isLpToken(tokenAddress: Address, network: string): boolean {
+export function isLpToken(tokenAddress: Address, network: string): bool {
   if (
     tokenAddress == constants.WHITELIST_TOKENS_MAP.get(network)!.get("ETH")!
   ) {
@@ -67,7 +67,7 @@ export function getPriceFromRouter(
 
   let path: Address[] = [];
   let numberOfJumps: BigInt;
-  let inputTokenIsWeth: boolean =
+  let inputTokenIsWeth: bool =
     token0Address == wethAddress || token1Address == wethAddress;
 
   if (inputTokenIsWeth) {

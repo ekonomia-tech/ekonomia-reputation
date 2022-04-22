@@ -4,12 +4,12 @@ import { CustomPriceType } from "../common/types";
 import {
   UniswapPair as UniswapPairContract,
   UniswapPair__getReservesResult,
-} from "../../../../generated/UniswapV2Factory/UniswapPair";
+} from "../../../generated/templates/LendingPool/UniswapPair";
 
 import { Address, BigInt } from "@graphprotocol/graph-ts";
-import { UniswapRouter as UniswapRouterContract } from "../../../../generated/UniswapV2Factory/UniswapRouter";
+import { UniswapRouter as UniswapRouterContract } from "../../../generated/templates/LendingPool/UniswapRouter";
 
-export function isLpToken(tokenAddress: Address, network: string): boolean {
+export function isLpToken(tokenAddress: Address, network: string): bool {
   if (
     tokenAddress == constants.WHITELIST_TOKENS_MAP.get(network)!.get("ETH")!
   ) {
@@ -67,7 +67,7 @@ export function getPriceFromRouter(
 
   let path: Address[] = [];
   let numberOfJumps: BigInt;
-  let inputTokenIsWeth: boolean =
+  let inputTokenIsWeth: bool =
     token0Address == wethAddress || token1Address == wethAddress;
 
   if (inputTokenIsWeth) {

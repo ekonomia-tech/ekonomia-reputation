@@ -1,8 +1,8 @@
 import { Asset } from '../../generated/schema'
-import { ERC20 } from '../../generated/LendingPoolAddressesProviderRegistry/ERC20'
+import { ERC20 } from '../../generated/templates/LendingPool/ERC20'
 import { Address, BigDecimal, log } from '@graphprotocol/graph-ts'
 import { zeroInt } from '../../../compound-v2/src/helpers/generic'
-import { getUsdPrice } from '../../messari/src/prices'
+import { getUsdPrice } from '../Prices/index'
 
 export function getOrCreateAsset(assetAddress: string): Asset {
     let asset = Asset.load(assetAddress)
@@ -25,5 +25,5 @@ export function getOrCreateAsset(assetAddress: string): Asset {
 }
 
 export function toUSD(assetId: string, amount: BigDecimal): BigDecimal {
-    return getUsdPrice(Address.fromString(assetId), amount)
+    return getUsdPrice(Address.fromString(assetId.toLowerCase()), amount)
 }

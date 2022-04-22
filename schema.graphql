@@ -214,7 +214,7 @@ type Reputation @entity {
   "Account ID + REP"
   id: ID!
   "Total experience accumulated"
-  exp: Int!
+  exp: BigDecimal!
   "Number of clsoed borrow positions the user has concluded"
   closedBorrowPositions: Int!
   "Number of clsoed deposit positions the user has concluded"

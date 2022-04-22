@@ -2,7 +2,7 @@ import * as utils from "../common/utils";
 import * as constants from "../common/constants";
 import { CustomPriceType } from "../common/types";
 import { Address, BigDecimal, BigInt } from "@graphprotocol/graph-ts";
-import { CalculationsCurve as CalculationsCurveContract } from "../../../../generated/UniswapV2Factory/CalculationsCurve";
+import { CalculationsCurve as CalculationsCurveContract } from "../../../generated/templates/LendingPool/CalculationsCurve";
 
 export function getCalculationsCurveContract(
   network: string

@@ -128,13 +128,11 @@ export function getUsdPricePerToken(tokenAddr: Address): CustomPriceType {
 export function getUsdPrice(tokenAddr: Address, amount: BigDecimal): BigDecimal {
   let tokenPrice = getUsdPricePerToken(tokenAddr);
 
+  log.warning("asset USD price: {}", [tokenPrice.usdPrice.toString()])
   if (!tokenPrice.reverted) {
     return tokenPrice.usdPrice
       .times(amount)
       .div(tokenPrice.decimals.toBigDecimal())
-      .div(
-        constants.BIGINT_TEN.pow(BigInt.fromI32(6).toI32() as u8).toBigDecimal()
-      );
   }
 
   return constants.BIGDECIMAL_ZERO;

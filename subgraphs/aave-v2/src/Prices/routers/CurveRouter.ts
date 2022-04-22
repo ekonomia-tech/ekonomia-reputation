@@ -8,7 +8,7 @@ import {
   BigInt,
   dataSource,
 } from "@graphprotocol/graph-ts";
-import { CurveRegistry as CurveRegistryContract } from "../../../../generated/UniswapV2Factory/CurveRegistry";
+import { CurveRegistry as CurveRegistryContract } from "../../../generated/templates/LendingPool/CurveRegistry";
 
 export function getCurvePriceUsdc(
   curveLpTokenAddress: Address,
@@ -127,7 +127,7 @@ export function getPriceUsdcRecommended(
   return getPriceUsdc(tokenAddress, network);
 }
 
-export function isBasicToken(tokenAddress: Address, network: string): boolean {
+export function isBasicToken(tokenAddress: Address, network: string): bool {
   for (
     let basicTokenIdx = 0;
     basicTokenIdx < constants.WHITELIST_TOKENS_LIST.length;
