@@ -4,7 +4,7 @@ import { getOrCreateAccount, getOrCreateAccountInMarket, updateAccountStats } fr
 import { getOrCreateAsset } from "./asset";
 import { getConcatenatedId, getOrCreateAssetTotals, getOrCreateCountTotals } from "./generic";
 import { updateProtocolStats } from "./protocol";
-import { incrementReputationStats } from "./reputation";
+import { updateReputation } from "./reputation";
 
 export function getMarket(marketId: string): Market {
     let market = Market.load(marketId);
@@ -16,9 +16,9 @@ export function getMarket(marketId: string): Market {
 
 export function updateStatistics(account: Account, market: Market, protocol: Protocol , event: Event): void {
     updateMarketPositions(account, market, event)
-    updateMarketStats(account, market, event)
-    updateProtocolStats(account, protocol, event)
-    updateAccountStats(account, event)
+    // updateMarketStats(account, market, event)
+    // updateProtocolStats(account, protocol, event)
+    // updateAccountStats(account, event)
 }
 
 export function updateMarketStats(account: Account, market: Market, event: Event): void {
@@ -54,13 +54,20 @@ export function updateMarketPositions(account: Account, market: Market, event: E
     return
   }
 
-  // verify the event is not LIQUIDATION or TRANSFER
-  if (!shouldProcess(event.eventType)) {
+  // verify the event is not TRANSFER, in which case will not affect the position
+  if (event.eventType == "TRANSFER") {
     return;
   }
 
   let position = getOrCreatePosition(account.id, market.id, event.eventType, '')
   
+  // In case there is a liquidation event, the liquidated account will be revoked fro getting reputation out of that 
+  // position as a whole, whether partial or full
+  if (event.eventType == "LIQUIDATION") {
+    processPositionLiquidation(position, event)
+    return
+  }
+
   // In case of a closed position, if there is a remainder of interest to be paid, but the balance is under 0, then the 
   // repayment will be added to the last closed position as a repayment event
   if (isPartialRepayment(position, event)) {
@@ -90,6 +97,7 @@ export function getOrCreatePosition(accountId: string, marketId: string, eventTy
     position.events = []
     position.interestPaid = BigDecimal.zero()
     position.closedPositions = []
+    position.isLiquidated = false
 
     return position
     
@@ -146,7 +154,7 @@ export function updatePosition(position: Position, event: Event): void {
       position.closedPositions = cEvents
       position.save()
 
-      incrementReputationStats(account, "BOR")
+      updateReputation(account, newPos)
 
       position = resetPositionStats(position)
       position.save()
@@ -175,7 +183,7 @@ export function updatePosition(position: Position, event: Event): void {
       position.closedPositions = cEvents
       position.save()
 
-      incrementReputationStats(account,"LEN")
+      updateReputation(account, newPos)
 
       position = resetPositionStats(position)
       position.save()
@@ -188,6 +196,31 @@ export function updatePosition(position: Position, event: Event): void {
   position.save();
 
 }
+
+export function processPositionLiquidation(position: Position, event: Event): void {
+  
+  // create a new closed position from the original position due to liquidation, giving 0 interest
+  let newPos = createChildPosition(position, BigDecimal.zero())
+
+  // marking the new closed position as liquidated
+  newPos.isLiquidated = true
+
+  // Add liquidation event to the new position to be closed
+  let pEvents = position.events
+  pEvents.push(event.id)
+  newPos.events = pEvents
+
+  // Add new position to the cvlosed position of the parent position container
+  let cEvents = position.closedPositions
+  cEvents.push(newPos.id)
+  position.closedPositions = cEvents
+
+  // reset paretn position and save
+  position = resetPositionStats(position)
+  position.save()
+
+}
+
 
 
 export function resetPositionStats(position: Position): Position {
@@ -204,6 +237,7 @@ export function resetPositionStats(position: Position): Position {
 }
 
 export function createChildPosition(position: Position, interest: BigDecimal): Position {
+  
   let loc = (position.closedPositions.length + 1).toString()
   let type = position.type == "BOR" ? "BORROW" : "DEPOSIT"
   let newPos = getOrCreatePosition(position.account, position.market, type, loc)

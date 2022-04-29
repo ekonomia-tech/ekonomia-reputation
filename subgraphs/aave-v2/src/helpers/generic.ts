@@ -1,4 +1,4 @@
-import { BigDecimal, BigInt } from "@graphprotocol/graph-ts"
+import { BigDecimal, BigInt, log } from "@graphprotocol/graph-ts"
 import { AssetTotal, CountTotal, USDTotal } from "../../generated/schema"
 
 export function exponentToBigDecimal(decimals: i32): BigDecimal {
@@ -80,6 +80,10 @@ export function getConcatenatedId(list: string[]): string {
 }
 
 
-export function daysDiff(start: i32, end: i32): i32 {
+export function daysDiff(start: number, end: number): number {
+  if (!start || !end) {
+    return 0
+  }
   return (end - start) / 86400
 }
+

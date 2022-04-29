@@ -86,4 +86,6 @@ export function updateAccountStats(account: Account, event: Event): void {
   } else if (event.eventType == "LIQUIDATION") {
     accountTotals.liquidated += 1
   }
+
+  accountTotals.save()
 }

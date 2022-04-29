@@ -208,6 +208,17 @@ type Position @entity {
   interestPaid: BigDecimal!
   "Closed positions count"
   closedPositions: [Position!]!
+  "was the position liquidated?"
+  isLiquidated: Boolean
+}
+
+type ClosedPositionsGain @entity {
+  "id of the iteration of closed position PositionID + CPG"
+  id: ID!
+  "position ID"
+  position: Position!
+  "exp gained"
+  expGained: BigDecimal!
 }
 
 type Reputation @entity {
@@ -219,6 +230,8 @@ type Reputation @entity {
   closedBorrowPositions: Int!
   "Number of clsoed deposit positions the user has concluded"
   closedDepositPositions: Int!
+  "Closed positions exp gain log"
+  activityLog: [ClosedPositionsGain!]!
 }
 
 type AccountInSeason @entity {
@@ -267,6 +280,8 @@ type Event @entity {
   eventType: String!
   "Amount of Tokens transferred - Underlying"
   amount: BigDecimal! #SP: The distinction between the tokens used here and xTokenAmount needs to be discussed
+  "Underlying asset USD value"
+  amountUSD: BigDecimal!
   "Block timestamp"
   blockTime: Int! #SP: DISCARD because if we have blockNumber, I think we don't need blockTime or viceversa.
   "Block number"

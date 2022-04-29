@@ -1,6 +1,6 @@
 import { log } from '@graphprotocol/graph-ts';
 import { getOrCreateAsset } from '../../../compound-v2/src/helpers/asset';
-import { Event } from '../../generated/schema';
+import { Account, Event } from '../../generated/schema';
 import { Borrow, Deposit, LiquidationCall, Repay, Withdraw } from '../../generated/templates/LendingPool/LendingPool';
 import { addToLiquidationCount, getOrCreateAccount, markAccountAsBorrowed } from '../helpers/account';
 import { toUSD } from '../helpers/asset';
@@ -14,8 +14,7 @@ export function handleBorrow(event: Borrow): void {
     let protocol = getProtocol(market.protocol)
     let asset = getOrCreateAsset(market.asset);
     let account = getOrCreateAccount(event.params.user.toHexString())
-    let onBehalfOf = getOrCreateAccount(event.params.onBehalfOf.toHexString())
-    markAccountAsBorrowed(account.id)
+    let onBehalfOf: Account 
   
     let borrowId = event.transaction.hash
       .toHexString()
@@ -31,16 +30,28 @@ export function handleBorrow(event: Borrow): void {
     eventEntry.eventType = "BORROW"
     eventEntry.market = market.id
     eventEntry.account = account.id
-    eventEntry.onBehalfOf = onBehalfOf.id
+
+    if (event.params.onBehalfOf) {
+      onBehalfOf = getOrCreateAccount(event.params.onBehalfOf.toHexString())
+      eventEntry.onBehalfOf = onBehalfOf.id
+    }
+
     eventEntry.amount = borrowAmount;
+    eventEntry.amountUSD = toUSD(asset.id, eventEntry.amount)
     eventEntry.borrowRate = event.params.borrowRate;
     eventEntry.interestRateMode = event.params.borrowRateMode.toI32()
     eventEntry.blockTime = event.block.timestamp.toI32()
     eventEntry.blockNumber = event.block.number.toI32()
     eventEntry.save();
 
-    log.warning("Token: {}, address: {}, Amount: {}, USD Amount: {}, block: {}", [asset.symbol, asset.id, eventEntry.amount.toString(), toUSD(asset.id, eventEntry.amount).toString(), eventEntry.blockNumber.toString()])
+    if (onBehalfOf) {
+      updateStatistics(onBehalfOf, market, protocol, eventEntry)
+      markAccountAsBorrowed(onBehalfOf.id)
+      return
+    }
+    markAccountAsBorrowed(account.id)
     updateStatistics(account, market, protocol, eventEntry)
+  
   }
 
 export function handleDeposit(event: Deposit): void {
@@ -49,7 +60,7 @@ export function handleDeposit(event: Deposit): void {
     let protocol = getProtocol(market.protocol)
     let asset = getOrCreateAsset(market.asset);
     let account = getOrCreateAccount(event.params.user.toHexString())
-    let onBehalfOf = getOrCreateAccount(event.params.onBehalfOf.toHexString())
+    let onBehalfOf: Account 
 
     let depositId = event.transaction.hash
       .toHexString()
@@ -65,12 +76,22 @@ export function handleDeposit(event: Deposit): void {
     eventEntry.eventType = "DEPOSIT"
     eventEntry.market = market.id
     eventEntry.account = account.id
-    eventEntry.onBehalfOf = onBehalfOf.id
-    eventEntry.amount = depositAmount;
+    
+    if (event.params.onBehalfOf) {
+      onBehalfOf = getOrCreateAccount(event.params.onBehalfOf.toHexString())
+      eventEntry.onBehalfOf = onBehalfOf.id
+    }
+
+    eventEntry.amount = depositAmount
+    eventEntry.amountUSD = toUSD(asset.id, eventEntry.amount)
     eventEntry.blockTime = event.block.timestamp.toI32()
     eventEntry.blockNumber = event.block.number.toI32()
     eventEntry.save();
 
+    if (onBehalfOf) {
+        updateStatistics(onBehalfOf, market, protocol, eventEntry)
+        return
+    }
     updateStatistics(account, market, protocol, eventEntry)
 }
 
@@ -96,7 +117,8 @@ export function handleWithdraw(event: Withdraw): void {
     eventEntry.eventType = "WITHDRAW"
     eventEntry.market = market.id
     eventEntry.account = account.id
-    eventEntry.amount = depositAmount;
+    eventEntry.amount = depositAmount
+    eventEntry.amountUSD = toUSD(asset.id, eventEntry.amount)
     eventEntry.blockTime = event.block.timestamp.toI32()
     eventEntry.blockNumber = event.block.number.toI32()
     eventEntry.to = to.id
@@ -129,6 +151,7 @@ export function handleRepay(event: Repay): void {
     eventEntry.account = account.id
     eventEntry.payer = repayer.id
     eventEntry.amount = repayAmount
+    eventEntry.amountUSD = toUSD(asset.id, eventEntry.amount)
     eventEntry.blockTime = event.block.timestamp.toI32()
     eventEntry.blockNumber = event.block.number.toI32()
     eventEntry.save();
@@ -170,6 +193,7 @@ export function handleLiquidate(event: LiquidationCall): void {
     eventEntry.account = account.id
     eventEntry.liquidator = liquidator.id
     eventEntry.amount = LiquidateAmount
+    eventEntry.amountUSD = toUSD(asset.id, eventEntry.amount)
     eventEntry.blockTime = event.block.timestamp.toI32()
     eventEntry.blockNumber = event.block.number.toI32()
     eventEntry.save();
