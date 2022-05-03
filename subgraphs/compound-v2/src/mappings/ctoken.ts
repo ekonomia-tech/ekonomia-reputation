@@ -1,9 +1,9 @@
-import { AccrueInterest, Borrow, LiquidateBorrow, Mint, NewMarketInterestRateModel, NewReserveFactor, Redeem, RepayBorrow, Transfer } from "../../generated/Comptroller/CToken";
+import { AccrueInterest, Borrow, LiquidateBorrow, Mint, Redeem, RepayBorrow, Transfer } from "../../generated/Comptroller/CToken";
 import { Event } from "../../generated/schema";
-import { addToLiquidationCount, getOrCreateAccount, markAccountAsBorrowed, updateAccountStats } from "../helpers/account";
+import { addToLiquidationCount, getOrCreateAccount, markAccountAsBorrowed } from "../helpers/account";
 import { getOrCreateAsset } from "../helpers/asset";
 import { cTokenDecimals, cTokenDecimalsBD, exponentToBigDecimal } from "../helpers/generic";
-import { getOrCreateMarket, updateMarketStats } from "../helpers/market";
+import { getOrCreateMarket, updateMarketPositions, updateStatistics } from "../helpers/market";
 import { getProtocol } from "../helpers/protocol";
 
 export function handleMint(event: Mint): void {
@@ -37,8 +37,7 @@ export function handleMint(event: Mint): void {
     eventEntry.blockNumber = event.block.number.toI32()
     eventEntry.save()
 
-    updateMarketStats(market.id, eventEntry.eventType, underlyingAmount)
-    updateAccountStats(protocol.id, market.id, account.id, underlyingAmount, eventEntry.eventType)
+    updateStatistics(account, market, protocol, eventEntry)
 }   
 
 
@@ -74,8 +73,7 @@ export function handleRedeem(event: Redeem): void {
 
     eventEntry.save()
 
-    updateMarketStats(market.id, eventEntry.eventType, underlyingAmount)
-    updateAccountStats(protocol.id, market.id, account.id, underlyingAmount, eventEntry.eventType)
+    updateStatistics(account, market, protocol, eventEntry)
 }
 
 export function handleBorrow(event: Borrow): void {
@@ -107,8 +105,7 @@ export function handleBorrow(event: Borrow): void {
 
     eventEntry.save()
 
-    updateMarketStats(market.id, eventEntry.eventType, underlyingAmount)
-    updateAccountStats(protocol.id, market.id, account.id, underlyingAmount, eventEntry.eventType)
+    updateStatistics(account, market, protocol, eventEntry)
 }
 
 
@@ -141,8 +138,7 @@ export function handleRepayBorrow(event: RepayBorrow): void {
 
     eventEntry.save()
 
-    updateMarketStats(market.id, eventEntry.eventType, underlyingAmount)
-    updateAccountStats(protocol.id, market.id, account.id, underlyingAmount, eventEntry.eventType)
+    updateStatistics(account, market, protocol, eventEntry)
 }
 
 
@@ -183,8 +179,7 @@ export function handleLiquidateBorrow(event: LiquidateBorrow): void {
     
     eventEntry.save()
 
-    updateMarketStats(market.id, eventEntry.eventType, underlyingAmount)
-    updateAccountStats(protocol.id, market.id, account.id, underlyingAmount, eventEntry.eventType)
+    updateStatistics(account, market, protocol, eventEntry)
 }
 
 
@@ -203,10 +198,8 @@ export function handleTransfer(event: Transfer): void {
         .toBigDecimal()
         .div(cTokenDecimalsBD)
     
-    let underlyingAmount = market.exchangeRate
-    .times(transferAmount
-        .truncate(asset.decimals)
-    )
+    let underlyingAmount = transferAmount.truncate(asset.decimals)
+   
 
     let eventEntry = new Event(transferId)
     eventEntry.protocol = protocol.id
@@ -221,10 +214,6 @@ export function handleTransfer(event: Transfer): void {
     eventEntry.blockNumber = event.block.number.toI32()
     
     eventEntry.save()
+
+    updateStatistics(account, market, protocol, eventEntry)
 }
-
-export function handleAccrueInterest(event: AccrueInterest): void {}
-
-export function handleNewReserveFactor(event: NewReserveFactor): void {}
-
-export function handleNewMarketInterestRateModel(event: NewMarketInterestRateModel): void {}

@@ -1,9 +1,11 @@
+import { log } from '@graphprotocol/graph-ts';
 import { getOrCreateAsset } from '../../../compound-v2/src/helpers/asset';
-import { Event } from '../../generated/schema';
-import { Borrow, LiquidationCall, RebalanceStableBorrowRate, Repay, ReserveDataUpdated, Deposit, Withdraw } from '../../generated/templates/LendingPool/LendingPool';
-import { addToLiquidationCount, getOrCreateAccount, markAccountAsBorrowed, updateAccountStats } from '../helpers/account';
-import { AAVE_V2_REGISTRY, exponentToBigDecimal } from '../helpers/generic';
-import { getMarket, updateMarketStats } from '../helpers/market';
+import { Account, Event } from '../../generated/schema';
+import { Borrow, Deposit, LiquidationCall, Repay, Withdraw } from '../../generated/templates/LendingPool/LendingPool';
+import { addToLiquidationCount, getOrCreateAccount, markAccountAsBorrowed } from '../helpers/account';
+import { toUSD } from '../helpers/asset';
+import { exponentToBigDecimal } from '../helpers/generic';
+import { getMarket, updateStatistics } from '../helpers/market';
 import { getProtocol } from '../helpers/protocol';
 
 export function handleBorrow(event: Borrow): void {
@@ -12,8 +14,7 @@ export function handleBorrow(event: Borrow): void {
     let protocol = getProtocol(market.protocol)
     let asset = getOrCreateAsset(market.asset);
     let account = getOrCreateAccount(event.params.user.toHexString())
-    let onBehalfOf = getOrCreateAccount(event.params.onBehalfOf.toHexString())
-    markAccountAsBorrowed(account.id)
+    let onBehalfOf: Account 
   
     let borrowId = event.transaction.hash
       .toHexString()
@@ -29,16 +30,28 @@ export function handleBorrow(event: Borrow): void {
     eventEntry.eventType = "BORROW"
     eventEntry.market = market.id
     eventEntry.account = account.id
-    eventEntry.onBehalfOf = onBehalfOf.id
+
+    if (event.params.onBehalfOf) {
+      onBehalfOf = getOrCreateAccount(event.params.onBehalfOf.toHexString())
+      eventEntry.onBehalfOf = onBehalfOf.id
+    }
+
     eventEntry.amount = borrowAmount;
+    eventEntry.amountUSD = toUSD(asset.id, eventEntry.amount)
     eventEntry.borrowRate = event.params.borrowRate;
     eventEntry.interestRateMode = event.params.borrowRateMode.toI32()
     eventEntry.blockTime = event.block.timestamp.toI32()
     eventEntry.blockNumber = event.block.number.toI32()
     eventEntry.save();
 
-    updateMarketStats(market.id, "BORROW", borrowAmount)
-    updateAccountStats(protocol.id, market.id, account.id, borrowAmount, eventEntry.eventType)
+    if (onBehalfOf) {
+      updateStatistics(onBehalfOf, market, protocol, eventEntry)
+      markAccountAsBorrowed(onBehalfOf.id)
+      return
+    }
+    markAccountAsBorrowed(account.id)
+    updateStatistics(account, market, protocol, eventEntry)
+  
   }
 
 export function handleDeposit(event: Deposit): void {
@@ -47,7 +60,7 @@ export function handleDeposit(event: Deposit): void {
     let protocol = getProtocol(market.protocol)
     let asset = getOrCreateAsset(market.asset);
     let account = getOrCreateAccount(event.params.user.toHexString())
-    let onBehalfOf = getOrCreateAccount(event.params.onBehalfOf.toHexString())
+    let onBehalfOf: Account 
 
     let depositId = event.transaction.hash
       .toHexString()
@@ -63,14 +76,23 @@ export function handleDeposit(event: Deposit): void {
     eventEntry.eventType = "DEPOSIT"
     eventEntry.market = market.id
     eventEntry.account = account.id
-    eventEntry.onBehalfOf = onBehalfOf.id
-    eventEntry.amount = depositAmount;
+    
+    if (event.params.onBehalfOf) {
+      onBehalfOf = getOrCreateAccount(event.params.onBehalfOf.toHexString())
+      eventEntry.onBehalfOf = onBehalfOf.id
+    }
+
+    eventEntry.amount = depositAmount
+    eventEntry.amountUSD = toUSD(asset.id, eventEntry.amount)
     eventEntry.blockTime = event.block.timestamp.toI32()
     eventEntry.blockNumber = event.block.number.toI32()
     eventEntry.save();
 
-    updateMarketStats(market.id, "DEPOSIT", depositAmount)
-    updateAccountStats(protocol.id, market.id, account.id, depositAmount, eventEntry.eventType)
+    if (onBehalfOf) {
+        updateStatistics(onBehalfOf, market, protocol, eventEntry)
+        return
+    }
+    updateStatistics(account, market, protocol, eventEntry)
 }
 
 export function handleWithdraw(event: Withdraw): void {
@@ -95,14 +117,14 @@ export function handleWithdraw(event: Withdraw): void {
     eventEntry.eventType = "WITHDRAW"
     eventEntry.market = market.id
     eventEntry.account = account.id
-    eventEntry.amount = depositAmount;
+    eventEntry.amount = depositAmount
+    eventEntry.amountUSD = toUSD(asset.id, eventEntry.amount)
     eventEntry.blockTime = event.block.timestamp.toI32()
     eventEntry.blockNumber = event.block.number.toI32()
     eventEntry.to = to.id
     eventEntry.save();
-
-    updateMarketStats(market.id, "WITHDRAW", depositAmount)
-    updateAccountStats(protocol.id, market.id, account.id, depositAmount, eventEntry.eventType)
+    
+    updateStatistics(account, market, protocol, eventEntry)
 }
 
 export function handleRepay(event: Repay): void {
@@ -129,12 +151,12 @@ export function handleRepay(event: Repay): void {
     eventEntry.account = account.id
     eventEntry.payer = repayer.id
     eventEntry.amount = repayAmount
+    eventEntry.amountUSD = toUSD(asset.id, eventEntry.amount)
     eventEntry.blockTime = event.block.timestamp.toI32()
     eventEntry.blockNumber = event.block.number.toI32()
     eventEntry.save();
 
-    updateMarketStats(market.id, "REPAY", repayAmount)
-    updateAccountStats(protocol.id, market.id, account.id, repayAmount, eventEntry.eventType)
+    updateStatistics(account, market, protocol, eventEntry)
 }
 
 export function handleLiquidate(event: LiquidationCall): void {
@@ -171,23 +193,23 @@ export function handleLiquidate(event: LiquidationCall): void {
     eventEntry.account = account.id
     eventEntry.liquidator = liquidator.id
     eventEntry.amount = LiquidateAmount
+    eventEntry.amountUSD = toUSD(asset.id, eventEntry.amount)
     eventEntry.blockTime = event.block.timestamp.toI32()
     eventEntry.blockNumber = event.block.number.toI32()
     eventEntry.save();
     
-    updateMarketStats(market.id, "LIQUIDATION", LiquidateAmount)
-    updateAccountStats(protocol.id, market.id, account.id, LiquidateAmount, eventEntry.eventType)
+    updateStatistics(account, market, protocol, eventEntry)
 }
 
 
-export function handleReserveDataUpdated(event: ReserveDataUpdated): void {
+// export function handleReserveDataUpdated(event: ReserveDataUpdated): void {
   
-  let market = getMarket(event.params.reserve.toHexString())
-  market.liquidityRate = event.params.liquidityRate
-  market.liquidityIndex = event.params.liquidityIndex
-  market.stableBorrowRate = event.params.stableBorrowRate
-  market.variableBorrowIndex = event.params.variableBorrowIndex
-  market.variableBorrowRate = event.params.variableBorrowRate
+//   let market = getMarket(event.params.reserve.toHexString())
+//   market.liquidityRate = event.params.liquidityRate
+//   market.liquidityIndex = event.params.liquidityIndex
+//   market.stableBorrowRate = event.params.stableBorrowRate
+//   market.variableBorrowIndex = event.params.variableBorrowIndex
+//   market.variableBorrowRate = event.params.variableBorrowRate
 
-  market.save()
-}
+//   market.save()
+// }

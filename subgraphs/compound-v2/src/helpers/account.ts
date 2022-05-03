@@ -1,17 +1,25 @@
-import { BigDecimal, BigInt } from "@graphprotocol/graph-ts";
 import { Account, AccountInMarket, AccountInProtocol } from "../../generated/schema";
-import { zeroBD, zeroInt } from "./generic";
+import { getOrCreateAsset } from "./asset";
+import { getConcatenatedId, getOrCreateAssetTotals, getOrCreateCountTotals } from "./generic";
+import { getOrCreateMarket } from "./market";
+import { getOrCreateReputation } from "./reputation";
 
 export function getOrCreateAccount(accountId: string): Account {
-    let account = Account.load(accountId);
-    if (!account) {
-      account = new Account(accountId)
-      account.hasBorrowed = false
-      account.liquidatedCount = 0
-      account.liquidatingCount = 0
-      account.save()
-    }
-    return account;
+  let account = Account.load(accountId);
+  if (!account) {
+    account = new Account(accountId)
+    let reputation = getOrCreateReputation(getConcatenatedId([account.id, "REP"]))
+    let countTotals = getOrCreateCountTotals(getConcatenatedId([account.id, "count"]))
+    account.hasBorrowed = false
+    account.liquidatedCount = 0
+    account.liquidatingCount = 0
+    account.assets = []
+    account.seasons = []
+    account.reputation = reputation.id
+    account.countTotals = countTotals.id
+    account.save()
+  }
+  return account;
 }
 
 export function markAccountAsBorrowed(accountId: string): void {
@@ -30,83 +38,40 @@ export function addToLiquidationCount(account: Account, isLiquidated: boolean): 
   account.save()
 }
 
-export function getOrCreateAccountInProtocol(protocolId: string, accountId: string): AccountInProtocol {
-  const acpId = protocolId.concat('-').concat(accountId);
-  let acp = AccountInProtocol.load(acpId)
-  if (!acp) {
-    acp = new AccountInProtocol(acpId)
-    acp.protocol = protocolId
-    acp.account = accountId
-    acp.depositCount = 0
-    acp.withdrawCount = 0
-    acp.borrowCount = 0
-    acp.repayCount = 0
-    acp.liquidatedCount = 0
-    acp.save()
-  }
-  return acp
-}
-
 export function getOrCreateAccountInMarket(marketId: string, accountId: string): AccountInMarket {
-  const acmId = marketId.concat('-').concat(accountId);
+  const acmId = getConcatenatedId([accountId, marketId])
   let acm = AccountInMarket.load(acmId)
   if (!acm) {
+    let market = getOrCreateMarket(marketId)
+    let asset = getOrCreateAsset(market.asset)
+    let countTotal = getOrCreateCountTotals(getConcatenatedId([acmId, "count"]))
+    let assetTotal = getOrCreateAssetTotals(getConcatenatedId([acmId, asset.id]))
+    
     acm = new AccountInMarket(acmId)
     acm.market = marketId
     acm.account = accountId
-    acm.deposited = zeroBD
-    acm.borrowed = zeroBD
-    acm.lifetimeBorrowed = zeroBD
-    acm.lifetimeDeposited = zeroBD
-    acm.lifetimeLiquidated = zeroBD
-    acm.lifetimeRepaid = zeroBD
-    acm.lifetimeWithdrawn = zeroBD
+    acm.assetTotals = assetTotal.id
+    acm.countTotals = countTotal.id
     acm.save()
   }
   return acm
 }
 
-export function updateAccountStats(protocolId: string, marketId: string, accountId: string, amount: BigDecimal, eventType: string): void {
-  let acm = getOrCreateAccountInMarket(marketId, accountId)
-  let acp = getOrCreateAccountInProtocol(protocolId, accountId)
-  if (eventType == "DEPOSIT") {
-    acm.depositCount += 1
-    acm.deposited = acm.deposited.plus(amount)
-    acm.lifetimeDeposited = acm.lifetimeDeposited.plus(amount)
-
-    acp.depositCount += 1
-
-  } else if (eventType == "WITHDRAW") {
-    acm.withdrawCount += 1
-    acm.deposited = acm.deposited.minus(amount)
-    acm.lifetimeWithdrawn = acm.lifetimeWithdrawn.plus(amount)
-
-    acp.withdrawCount += 1
-
-  } else if (eventType == "BORROW") {
-    acm.borrowCount += 1
-    acm.borrowed = acm.borrowed.plus(amount)
-    acm.lifetimeBorrowed = acm.lifetimeBorrowed.plus(amount)
-
-    acp.borrowCount += 1
-
-  } else if (eventType == "REPAY") {
-    acm.repayCount += 1
-    acm.borrowed = acm.borrowed.minus(amount)
-    acm.lifetimeRepaid = acm.lifetimeRepaid.plus(amount)
-
-    acp.repayCount += 1
-
-  } else if (eventType == "LIQUIDATION") {
-    acm.liquidatedCount += 1
-    acm.borrowed = acm.borrowed.minus(amount)
-    acm.lifetimeLiquidated = acm.lifetimeLiquidated.plus(amount)
-
-    acp.liquidatedCount += 1
-
+export function getOrCreateAccountInProtocol(protocolId: string, accountId: string) : AccountInProtocol {
+  let aipId = getConcatenatedId ([protocolId, accountId])
+  let aip = AccountInProtocol.load(aipId);
+  if (aip) {
+    return aip
   }
+  aip = new AccountInProtocol(aipId)
+  
+  let countTotals = getOrCreateCountTotals(getConcatenatedId([aipId, "count"]))
+  aip.account = accountId
+  aip.protocol = protocolId
+  aip.countTotals = countTotals.id
+  
+  aip.save()
 
-  acm.save()
-  acp.save()
+  return aip
 
 }

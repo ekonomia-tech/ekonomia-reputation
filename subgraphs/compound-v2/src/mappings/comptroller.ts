@@ -1,7 +1,6 @@
-import { MarketEntered, MarketExited, MarketListed, NewCloseFactor, NewCollateralFactor, NewLiquidationIncentive, NewMaxAssets, NewPriceOracle } from "../../generated/Comptroller/Comptroller"
+import { MarketEntered, MarketListed } from "../../generated/Comptroller/Comptroller"
 import { CToken } from "../../generated/templates"
 import { getOrCreateAccount, getOrCreateAccountInMarket, getOrCreateAccountInProtocol } from "../helpers/account"
-import { mantissaFactorBD  } from "../helpers/generic"
 import { getOrCreateMarket } from "../helpers/market"
 import { getProtocol } from "../helpers/protocol"
 
@@ -19,39 +18,3 @@ export function handleMarketEntered(event: MarketEntered): void {
     getOrCreateAccountInProtocol(protocol.id, account.id)
     getOrCreateAccountInMarket(market.id, account.id)
 }
-
-export function handleMarketExited(event: MarketExited): void {}
-
-export function handleNewPriceOracle(event: NewPriceOracle): void {
-    let protocol = getProtocol("COMPOUND-ETHEREUM")
-    // This is the first event used in this mapping, so we use it to create the entity
-    protocol.priceOracle = event.params.newPriceOracle
-    protocol.save()
-}
-
-export function handleNewMaxAssets(event: NewMaxAssets): void {
-    let protocol = getProtocol("COMPOUND-ETHEREUM")
-    protocol.maxAssets = event.params.newMaxAssets
-    protocol.save()
-}
-
-export function handleNewLiquidationIncentive(event: NewLiquidationIncentive): void {
-    let protocol = getProtocol("COMPOUND-ETHEREUM")
-    protocol.liquidationIncentive = event.params.newLiquidationIncentiveMantissa
-    protocol.save()
-}
-
-export function handleNewCollateralFactor(event: NewCollateralFactor): void {
-    let market = getOrCreateMarket(event.params.cToken.toHexString())
-    market.collateralFactor = event.params.newCollateralFactorMantissa
-    .toBigDecimal()
-    .div(mantissaFactorBD)
-    market.save()
-
-}
-
-export function handleNewCloseFactor(event: NewCloseFactor): void {
-    let protocol = getProtocol("COMPOUND-ETHEREUM") 
-    protocol.closeFactor = event.params.newCloseFactorMantissa
-    protocol.save()
-  }
